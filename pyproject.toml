@@ -25,6 +25,7 @@ dependencies = [
 [project.scripts]
 build-pack = "regional_packs.cli:main"
 download-models = "regional_packs.models:main"
+box-image = "regional_packs.box_image:main"
 
 [tool.uv.sources]
 # Pinned to a release rather than to a branch, so a pack is always built against a station that

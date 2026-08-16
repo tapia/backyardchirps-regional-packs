@@ -83,7 +83,7 @@ def render_range_maps(species: list[Species], source_dir: Path, destination_dir:
     height, width = basemap.shape[:2]
     left, right, bottom, top = extent
     transform = from_bounds(left, bottom, right, top, width * SUPERSAMPLE, height * SUPERSAMPLE)
-    to_mercator = _mercator_transformer()
+    to_mercator = mercator_transformer()
 
     drawn = 0
     for one_species in species:
@@ -169,7 +169,7 @@ def _zoom_for(box: BoundingBox) -> int:
     return max(1, min(12, math.ceil(math.log2(360.0 * tiles_across / span))))
 
 
-def _mercator_transformer() -> pyproj.Transformer:
+def mercator_transformer() -> pyproj.Transformer:
     return pyproj.Transformer.from_crs(SOURCE_CRS, MAP_CRS, always_xy=True)
 
 

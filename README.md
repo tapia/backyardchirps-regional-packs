@@ -48,8 +48,22 @@ index. The Makefile derives all three from one value and refuses to publish when
 
 `make help` lists the packs already defined. A new one is four lines in the Makefile, on purpose:
 a bounding box goes into `pack.json` and `index.json`, where a mistyped one is expensive to take
-back. To try a box before committing to it, `make preview ID=... BBOX="W S E N"` skips the maps
-and writes no index entry.
+back.
+
+**Check a box before building anything from it:**
+
+```bash
+make box-image ID=somewhere BBOX="W S E N"    # writes dist/boxes/somewhere.png
+```
+
+That draws the box on the same basemap a range map is framed on, dimming everything outside it,
+and takes seconds without an eBird key. It is the only check there is: no test can tell you that
+a box misses an island, because the question is geographic rather than arithmetic. An island in
+the dimmed margin looks covered and is not.
+
+Then `make preview ID=... BBOX="W S E N"` builds a real pack from the box with no maps and no
+index entry, which is the cheap way to see how many species it pulls in before committing hours
+to it.
 
 Underneath, the builder asks GeoModel which species are plausible over a grid of points covering
 the box, downloads the eBird data for each of them, crops every raster to the box, draws a range

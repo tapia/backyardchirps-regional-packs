@@ -38,7 +38,7 @@ iberian-peninsula: pack
 canary-islands: ID := canary-islands
 canary-islands: NAME_EN := Canary Islands
 canary-islands: NAME_ES := Islas Canarias
-canary-islands: BBOX := -18.4 27.4 -13.3 29.5
+canary-islands: BBOX := -18.6 27.4 -13.1 29.8
 canary-islands: pack
 
 .PHONY: help
@@ -51,6 +51,7 @@ help:
 	@echo "Building a pack (needs EBIRD_API_KEY)"
 	@echo "  make iberian-peninsula       build it, maps and all, and update $(INDEX)"
 	@echo "  make canary-islands"
+	@echo "  make box-image ID=... BBOX=... draw the box on a map, to check it covers what you meant"
 	@echo "  make preview ID=... BBOX=...  a quick look at a new box: no maps, no index entry"
 	@echo ""
 	@echo "Publishing"
@@ -104,6 +105,13 @@ preview: require-pack-arguments
 		--output-dir "$(DIST)/preview" \
 		--skip-maps \
 		$(DOWNLOAD_FLAG)
+
+# Look at a box before anything is built from it. Seconds, no eBird key, no species. The only
+# check there is that a box covers the ground its name claims: nothing arithmetic can tell you
+# that an island is missing.
+.PHONY: box-image
+box-image: require-pack-arguments
+	uv run box-image --bbox $(BBOX) --output "$(DIST)/boxes/$(ID).png"
 
 .PHONY: publish
 publish:

@@ -13,3 +13,4 @@ __pycache__/
 .ruff_cache/
 .claude/
 .DS_Store
+.idea
