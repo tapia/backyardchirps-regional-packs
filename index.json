@@ -1,0 +1,23 @@
+{
+  "packs": [
+    {
+      "id": "iberian-peninsula",
+      "names": {
+        "en": "Iberian Peninsula",
+        "es": "Península ibérica"
+      },
+      "bbox": {
+        "west": -10.8,
+        "south": 34.2,
+        "east": 5.4,
+        "north": 44.9
+      },
+      "version": "2026-08-16",
+      "species_count": 414,
+      "url": "https://github.com/tapia/backyardchirps-regional-packs/releases/download/iberian-peninsula-2026-08-16/iberian-peninsula-2026-08-16.tar.zst",
+      "sha256": "340a116524ea2556f3bb4b4a449528558b2e17a9e94ba620974350de6824fc36",
+      "size_bytes": 269969931
+    }
+  ],
+  "updated": "2026-08-16"
+}

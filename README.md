@@ -93,6 +93,14 @@ own data directory layout, pointed here through `BACKYARDCHIRPS_DATA_DIR`, so a 
 neighbouring ground re-fetches nothing. Set the variable yourself to share a directory with a
 station checkout that already has the models.
 
+**Rendered maps are cached** in `work/species/range_map_cache/<version>-<box>/`, and that is what
+makes rebuilding a pack cheap. Drawing the maps is by far the longest part of a build, while the
+crop beside it takes seconds, so a second run over the same box copies the maps out of the cache
+and finishes in a fraction of the time. A cache entry belongs to one box and one render version,
+so it is only reused for a map that would come out identical; change how a map looks and you bump
+`RENDER_VERSION` in `range_maps.py`, which sets the old cache aside rather than mixing the two.
+Delete the directory to force a redraw.
+
 ## What a pack contains
 
 ```

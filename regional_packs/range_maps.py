@@ -10,6 +10,8 @@ paid once however many birds live in the box.
 """
 
 import math
+import shutil
+from collections.abc import Callable
 from pathlib import Path
 
 import contextily
@@ -48,6 +50,11 @@ ALPHA = 0.6
 # what anti-aliases their edges.
 SUPERSAMPLE = 3
 
+# Bumped when anything here changes what a map looks like: the basemap, the colours, the
+# size, the blend. It is part of the cache directory name, so an old cache is ignored
+# rather than quietly mixed with new renders.
+RENDER_VERSION = "v1"
+
 WEBP_QUALITY = 90
 # The slowest and smallest WebP setting. A pack is built once and downloaded many times.
 WEBP_METHOD = 6
@@ -72,27 +79,62 @@ COLORS = {
 }
 
 
-def render_range_maps(species: list[Species], source_dir: Path, destination_dir: Path, box: BoundingBox) -> int:
+def render_range_maps(
+    species: list[Species],
+    source_dir: Path,
+    destination_dir: Path,
+    cache_root: Path,
+    box: BoundingBox,
+    report: Callable[[str], None] = lambda message: None,
+) -> int:
     """
-    Draw a map for every species with a range GeoPackage on disk, and return how many were
-    written. A species without one is skipped: the pack loses that map and nothing else.
+    Put a map for every species with a range GeoPackage into destination_dir, and return
+    how many. A species without one is skipped: the pack loses that map and nothing else.
+
+    Maps are drawn into a cache first and copied out of it, which is what makes a rebuild
+    cheap. Drawing is the longest part of building a pack by a wide margin, and the crop
+    beside it takes seconds, so losing an hour of maps to a failed archive step or a
+    cancelled run is the thing worth designing against. A cache entry belongs to one box
+    and one RENDER_VERSION, so it is only ever reused for a map that would come out the
+    same.
     """
     destination_dir.mkdir(parents=True, exist_ok=True)
+    cache_dir = cache_root / f"{RENDER_VERSION}-{_box_key(box)}"
+    cache_dir.mkdir(parents=True, exist_ok=True)
 
-    basemap, extent = build_basemap(box)
-    height, width = basemap.shape[:2]
-    left, right, bottom, top = extent
-    transform = from_bounds(left, bottom, right, top, width * SUPERSAMPLE, height * SUPERSAMPLE)
-    to_mercator = mercator_transformer()
+    drawable: list[tuple[Species, Path]] = []
+    for one in species:
+        source = _range_package(source_dir / str(one.ebird_code()))
+        if source is not None:
+            drawable.append((one, source))
+    to_draw = [(one, source) for one, source in drawable if not (cache_dir / f"{one.slug}.webp").exists()]
 
-    drawn = 0
-    for one_species in species:
-        source_path = _range_package(source_dir / str(one_species.ebird_code()))
-        if source_path is None:
-            continue
-        _render_one(source_path, basemap, transform, to_mercator, destination_dir / f"{one_species.slug}.webp")
-        drawn += 1
-    return drawn
+    if to_draw:
+        report(f"drawing {len(to_draw)} of {len(drawable)} maps, the rest are already in {cache_dir}")
+        # Only now, because the tiles are a download nobody needs when every map is cached.
+        basemap, extent = build_basemap(box)
+        height, width = basemap.shape[:2]
+        left, right, bottom, top = extent
+        transform = from_bounds(left, bottom, right, top, width * SUPERSAMPLE, height * SUPERSAMPLE)
+        to_mercator = mercator_transformer()
+
+        for index, (one, source) in enumerate(to_draw, start=1):
+            _render_one(source, basemap, transform, to_mercator, cache_dir / f"{one.slug}.webp")
+            report(f"  {index}/{len(to_draw)} {one.slug}")
+    else:
+        report(f"every map is already in {cache_dir}")
+
+    for one, _ in drawable:
+        shutil.copy2(cache_dir / f"{one.slug}.webp", destination_dir / f"{one.slug}.webp")
+    return len(drawable)
+
+
+def _box_key(box: BoundingBox) -> str:
+    """
+    A directory name for one box. Readable on purpose, so the cache can be looked at and
+    thrown away by hand.
+    """
+    return f"{box.west:g}_{box.south:g}_{box.east:g}_{box.north:g}"
 
 
 def build_basemap(box: BoundingBox) -> tuple[np.ndarray, tuple[float, float, float, float]]:

@@ -228,8 +228,15 @@ def _stage(
         # only when the file is there, so an empty directory costs it the map and nothing else.
         maps_dir.mkdir()
     else:
-        _say("drawing range maps, which fetches the basemap once and then draws one per species")
-        _say(f"{render_range_maps(species, source_dir, maps_dir, box)} range maps drawn")
+        drawn = render_range_maps(
+            species,
+            source_dir,
+            maps_dir,
+            Path(settings.SPECIES_RUNTIME_DIR) / "range_map_cache",
+            box,
+            report=_say,
+        )
+        _say(f"{drawn} range maps in the pack")
 
     pack = {**described, "species_count": cropped}
     (staging / "pack.json").write_text(json.dumps(pack, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
