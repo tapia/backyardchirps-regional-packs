@@ -1,0 +1,87 @@
+[project]
+name = "backyardchirps-regional-packs"
+version = "0.1.0"
+description = "Build the region packs a Backyard Chirps station downloads"
+readme = "README.md"
+license = "AGPL-3.0-only"
+requires-python = ">=3.13"
+dependencies = [
+    # The station itself, for the one thing that must never be duplicated: the call that
+    # decides which species are plausible somewhere. A pack built from a second copy of that
+    # logic would drift from the stations it serves, and the drift would be silent.
+    "backyardchirps",
+    "requests>=2.34.2",
+    "rasterio>=1.5.0",
+    "numpy>=2.4.6",
+    "pyproj>=3.7.2",
+    # The range-map renderer, and the reason this repository exists separately: a station
+    # would install all of this and never open it.
+    "contextily>=1.6.2",
+    "geopandas>=1.0.1",
+    "shapely>=2.0.6",
+    "pillow>=11.0.0",
+]
+
+[project.scripts]
+build-pack = "regional_packs.cli:main"
+download-models = "regional_packs.models:main"
+
+[tool.uv.sources]
+# Pinned to a release rather than to a branch, so a pack is always built against a station that
+# exists rather than against whatever main happened to be that morning. Raise it deliberately
+# when this repository needs something newer.
+#
+# To work on both at once, override it locally and remember to put it back:
+#   uv add --editable ../backyardchirps
+backyardchirps = { git = "https://github.com/tapia/backyardchirps.git", tag = "v0.1.3" }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["regional_packs"]
+
+[dependency-groups]
+dev = [
+    "mypy>=2.1.0",
+    "pytest>=8.3.0",
+    "ruff>=0.15.17",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+
+[tool.mypy]
+python_version = "3.13"
+files = ["regional_packs"]
+allow_untyped_defs = false
+allow_incomplete_defs = false
+no_implicit_optional = true
+warn_return_any = true
+
+[[tool.mypy.overrides]]
+module = ["rasterio", "rasterio.*", "contextily", "geopandas", "shapely", "shapely.*"]
+ignore_missing_imports = true
+
+# The station is checked in its own repository, with django-stubs, which is where that belongs.
+# From here it is a dependency without a py.typed marker, so mypy cannot follow it and would
+# otherwise report every import of it as an error rather than checking anything.
+[[tool.mypy.overrides]]
+module = ["backyardchirps.*", "django.*"]
+ignore_missing_imports = true
+
+[tool.ruff]
+target-version = "py313"
+line-length = 120
+fix = true
+
+[tool.ruff.lint]
+select = ["A", "B", "C4", "C90", "E", "F", "I", "PGH", "PT", "RUF", "SIM", "T20", "TID", "W"]
+isort.force-single-line = true
+
+[tool.ruff.lint.per-file-ignores]
+# print() is this tool's normal output.
+"regional_packs/**" = ["T201"]
+"tests/**" = ["INP001"]

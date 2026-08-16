@@ -1,0 +1,32 @@
+name: CI
+
+# Lint, type-check and test on every push. Building an actual pack is not part of this and
+# should not be: it needs an eBird key, downloads gigabytes, and takes hours. What runs here is
+# everything that can be checked without any of that, which is the box arithmetic, the crop, the
+# index, and that this repository still agrees with the station release it pins.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    name: Lint, type-check and test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      # This resolves backyardchirps from its git tag, so a failure here means the pin in
+      # pyproject.toml names a release that cannot satisfy this repository any more. That is
+      # worth failing on: it is the only thing standing between a shared species derivation and
+      # a silently duplicated one.
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Checks
+        run: make check

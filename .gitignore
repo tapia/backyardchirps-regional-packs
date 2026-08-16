@@ -1,0 +1,15 @@
+# Everything downloaded or generated: the models, the eBird rasters and GeoPackages, the
+# refreshed taxonomy. Gigabytes, and all of it re-fetchable.
+work/
+
+# Built packs.
+dist/
+
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.claude/
+.DS_Store
