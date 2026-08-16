@@ -1,4 +1,4 @@
-# Backyard Chirps regional packs
+# Backyard Chirps region packs
 
 The region packs a [Backyard Chirps](https://github.com/tapia/backyardchirps) station downloads,
 and the code that builds them.

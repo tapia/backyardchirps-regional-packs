@@ -1,0 +1,47 @@
+name: Ask for a region pack
+description: No pack covers where your station is
+title: "Pack request: "
+labels: ["pack request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Your station told you no pack covers it, and sent you here.
+
+        A pack holds the eBird occurrence data and range maps for one box on the map. It
+        is what gives a species page its seasonal chart and its map. A station without one
+        still records, identifies and shows everything else.
+
+        Every field below is optional except the first. The coordinates are the useful
+        part: they say where a pack has to reach, and several requests near each other
+        turn into one pack covering all of them.
+  - type: input
+    id: coordinates
+    attributes:
+      label: Where is your station?
+      description: >
+        The latitude and longitude your station is set to, or the name of the place if you
+        would rather not give them. Two decimal places is close enough, and is about a
+        kilometre.
+      placeholder: "40.41, -3.70, or: Madrid, Spain"
+    validations:
+      required: true
+  - type: input
+    id: region
+    attributes:
+      label: What should the pack be called?
+      description: The region as somebody living there would name it.
+      placeholder: Central Mexico
+  - type: textarea
+    id: extent
+    attributes:
+      label: How far should it reach?
+      description: >
+        Anything worth knowing about where the edges belong. Islands, a mountain range that
+        should be whole, a border that matters less than it looks. A pack is a box, so it
+        does not have to follow a country.
+  - type: markdown
+    attributes:
+      value: |
+        Packs are built by hand from eBird Status & Trends data, so this is not immediate.
+        A request with coordinates in it is what decides which one comes next.
