@@ -1,6 +1,24 @@
 {
   "packs": [
     {
+      "id": "canary-islands",
+      "names": {
+        "en": "Canary Islands",
+        "es": "Islas Canarias"
+      },
+      "bbox": {
+        "west": -18.6,
+        "south": 27.4,
+        "east": -13.1,
+        "north": 29.8
+      },
+      "version": "2026-08-17",
+      "species_count": 265,
+      "url": "https://github.com/tapia/backyardchirps-regional-packs/releases/download/canary-islands-2026-08-17/canary-islands-2026-08-17.tar.zst",
+      "sha256": "fd33d4fe467b88bab220a7d908293f6546f08362acc492a360e82fbbdcc95828",
+      "size_bytes": 6539108
+    },
+    {
       "id": "iberian-peninsula",
       "names": {
         "en": "Iberian Peninsula",
@@ -19,5 +37,5 @@
       "size_bytes": 269969931
     }
   ],
-  "updated": "2026-08-16"
+  "updated": "2026-08-17"
 }
