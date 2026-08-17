@@ -243,9 +243,16 @@ class TestStagedPack:
         staged = _stage_pack(tmp_path, whole_rasters, BoundingBox(*IBERIA))
         assert (staged / "ebird_occurrence" / SPECIES_CODE / "band-dates.csv").is_file()
 
-    def test_carries_a_range_maps_directory_and_a_pack_file(self, whole_rasters: Path, tmp_path: Path) -> None:
+    def test_carries_every_directory_a_station_links_to_and_a_pack_file(
+        self, whole_rasters: Path, tmp_path: Path
+    ) -> None:
+        """
+        Skipped or not, both directories are created. A station links to each of them when it
+        installs a pack, and finds them empty rather than missing.
+        """
         staged = _stage_pack(tmp_path, whole_rasters, BoundingBox(*IBERIA))
         assert (staged / "range_maps").is_dir()
+        assert (staged / "reference_calls").is_dir()
         assert json.loads((staged / "pack.json").read_text())["species_count"] == 1
 
 
@@ -283,8 +290,9 @@ class TestPackIndex:
 def _stage_pack(tmp_path: Path, whole_rasters: Path, box: BoundingBox) -> Path:
     staged = tmp_path / "pack"
     described = {"id": "a-region", "names": {"en": "A region", "es": "Una region"}, "bbox": box.as_dict()}
-    # skip_maps, because drawing one would fetch basemap tiles over the network.
-    cli._stage(staged, described, [SPECIES], whole_rasters, box, skip_maps=True)
+    # Both skipped, because drawing a map would fetch basemap tiles and looking up a reference
+    # call would ask xeno-canto. Neither is what these tests are about.
+    cli._stage(staged, described, [SPECIES], whole_rasters, box, skip_maps=True, skip_calls=True)
     return staged
 
 

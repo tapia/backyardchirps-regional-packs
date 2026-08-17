@@ -1,7 +1,7 @@
 """
 Build a region pack: the eBird data a station needs, cut down to one box.
 
-  EBIRD_API_KEY=<key> uv run build-pack \
+  EBIRD_API_KEY=<key> XENO_CANTO_API_KEY=<key> uv run build-pack \
       --id iberian-peninsula \
       --name-en "Iberian Peninsula" --name-es "Peninsula iberica" \
       --bbox -10.0 35.0 4.5 44.5 \
@@ -12,6 +12,10 @@ another. The rasters eBird publishes cover the whole globe at 9km, which is far 
 station will ever sample: cropping them to the box is what takes a pack from gigabytes to
 something a Pi can download. Values inside the box are untouched, so a station's seasonality
 timeline reads a cropped raster exactly as it reads a whole one.
+
+Two keys are needed, and only here. EBIRD_API_KEY fetches the rasters and the range polygons.
+XENO_CANTO_API_KEY searches for the reference recordings a species page offers, which is a search
+a station would otherwise have to run itself, with a key its owner would have to go and get.
 
 A pack carries no species list. The species derived here decide which data to fetch and nothing
 else, because a list is only right for the point it was made for, and a box-wide one would make
@@ -57,6 +61,7 @@ from regional_packs.ebird import species_over
 from regional_packs.index import update_index
 from regional_packs.range_maps import render_range_maps
 from regional_packs.rasters import crop_raster
+from regional_packs.xeno_canto import write_reference_calls
 
 PACK_ID = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 PACK_VERSION = re.compile(r"^[A-Za-z0-9.-]+$")
@@ -89,6 +94,15 @@ def main() -> None:
     if not geomodel_is_available():
         _fail(f"GeoModel is not in {WORK_DIR}. Run: uv run download-models")
 
+    # Checked before the hours of downloading and drawing rather than when it is first needed.
+    # Reference calls are the last thing a pack gets, so a missing key would otherwise surface
+    # at the end of a long build.
+    if not arguments.skip_reference_calls and not os.environ.get("XENO_CANTO_API_KEY"):
+        _fail(
+            "Set XENO_CANTO_API_KEY to your xeno-canto API key, or pass --skip-reference-calls. "
+            "It is at https://xeno-canto.org/account, and only this build needs it: a station never does."
+        )
+
     _say(f"{len(points)} grid points over the box, {arguments.grid_step} degrees apart")
     species = species_over(points)
 
@@ -109,7 +123,7 @@ def main() -> None:
     }
     with tempfile.TemporaryDirectory() as staging_parent:
         staging = Path(staging_parent) / arguments.id
-        pack = _stage(staging, described, species, source_dir, box, arguments.skip_maps)
+        pack = _stage(staging, described, species, source_dir, box, arguments.skip_maps, arguments.skip_reference_calls)
         tarball_path = _write_archive(Path(staging_parent), arguments.id, arguments.version, output_dir)
 
     with tarball_path.open("rb") as archive:
@@ -167,6 +181,11 @@ def _parse_arguments() -> argparse.Namespace:
         action="store_true",
         help="leave range_maps empty, which is much faster and costs a station only the map on a species page",
     )
+    parser.add_argument(
+        "--skip-reference-calls",
+        action="store_true",
+        help="leave reference_calls empty, so no XENO_CANTO_API_KEY is needed and nothing is asked of xeno-canto",
+    )
     parser.add_argument("--index", type=Path, help="a packs index to merge this pack's entry into")
     parser.add_argument("--base-url", help="where packs are published, used to build the index entry's url")
     return parser.parse_args()
@@ -192,6 +211,7 @@ def _stage(
     source_dir: Path,
     box: BoundingBox,
     skip_maps: bool,
+    skip_calls: bool,
 ) -> dict[str, Any]:
     """
     Lay the pack out under a temporary directory, exactly as it will be unpacked into
@@ -221,6 +241,16 @@ def _stage(
     if outside_the_box:
         _say(f"raster does not reach the box for {len(outside_the_box)} species: {', '.join(sorted(outside_the_box))}")
     _say(f"{cropped} species cropped into the pack")
+
+    calls_dir = staging / "reference_calls"
+    if skip_calls:
+        # Created anyway, for the same reason as an empty range_maps below: a station links to
+        # this directory whether or not the pack filled it, and finds no recordings rather than
+        # no directory.
+        calls_dir.mkdir()
+    else:
+        found = write_reference_calls(species, calls_dir, api_key=os.environ["XENO_CANTO_API_KEY"], report=_say)
+        _say(f"reference calls for {found} species in the pack")
 
     maps_dir = staging / "range_maps"
     if skip_maps:

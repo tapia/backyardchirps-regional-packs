@@ -48,7 +48,7 @@ help:
 	@echo "  make models                  download GeoModel into work/"
 	@echo "  make check                   lint, type-check and test"
 	@echo ""
-	@echo "Building a pack (needs EBIRD_API_KEY)"
+	@echo "Building a pack (needs EBIRD_API_KEY and XENO_CANTO_API_KEY)"
 	@echo "  make iberian-peninsula       build it, maps and all, and update $(INDEX)"
 	@echo "  make canary-islands"
 	@echo "  make box-image ID=... BBOX=... draw the box on a map, to check it covers what you meant"
@@ -80,6 +80,8 @@ check:
 pack: require-pack-arguments
 	@test -n "$${EBIRD_API_KEY:-}" || test -n "$(SKIP_DOWNLOAD)" || \
 		{ echo "Set EBIRD_API_KEY, or pass SKIP_DOWNLOAD=1 to build from work/."; exit 1; }
+	@test -n "$${XENO_CANTO_API_KEY:-}" || \
+		{ echo "Set XENO_CANTO_API_KEY. It is at https://xeno-canto.org/account."; exit 1; }
 	uv run build-pack \
 		--id "$(ID)" \
 		--name-en "$(NAME_EN)" --name-es "$(NAME_ES)" \
@@ -93,8 +95,9 @@ pack: require-pack-arguments
 	@echo "Built $(TARBALL) and updated $(INDEX)."
 	@echo "Next: make publish ID=$(ID) VERSION=$(VERSION)"
 
-# A box you are still deciding on. No maps, so it finishes in minutes rather than hours, and no
-# --index, so nothing a station reads is touched by a pack you are not going to publish.
+# A box you are still deciding on. No maps and no reference calls, so it finishes in minutes
+# rather than hours and needs no xeno-canto key, and no --index, so nothing a station reads is
+# touched by a pack you are not going to publish.
 .PHONY: preview
 preview: require-pack-arguments
 	uv run build-pack \
@@ -104,6 +107,7 @@ preview: require-pack-arguments
 		--version "$(VERSION)" \
 		--output-dir "$(DIST)/preview" \
 		--skip-maps \
+		--skip-reference-calls \
 		$(DOWNLOAD_FLAG)
 
 # Look at a box before anything is built from it. Seconds, no eBird key, no species. The only
