@@ -25,7 +25,7 @@ BAND_DATES_FILE = "band-dates.csv"
 # Wait 2, 4, 8, 16 and 32 seconds before giving up.
 RETRY = Retry(total=5, backoff_factor=2, status_forcelist=(500, 502, 503, 504))
 
-# eBird doesn't publish info about all species in every release, so we need a fallback to 
+# eBird doesn't publish info about all species in every release, so we need a fallback to
 # query previous releases. For now we only query 2023 and 2021 releases.
 #
 # The products are the same ones in the same format, with one main difference: the 9km resolution
