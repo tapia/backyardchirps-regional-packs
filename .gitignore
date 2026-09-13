@@ -5,6 +5,10 @@ work/
 # Built packs.
 dist/
 
+# The two API keys, kept where `source env` can find them. Only this repository ever holds them:
+# a station holds neither.
+env
+
 .venv/
 __pycache__/
 *.pyc

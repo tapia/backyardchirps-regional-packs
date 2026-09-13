@@ -25,6 +25,12 @@ from regional_packs.range_maps import mercator_transformer
 # A colour no basemap or relief uses, so the line is never mistaken for a coast.
 OUTLINE = np.array([220, 20, 60], dtype=np.uint8)
 
+# How much ground beyond the box to draw, as a fraction of its span. A range map is cropped to
+# its box exactly; this tool asks for the opposite, because what it is for is showing what the
+# box misses. Asked for rather than inherited from wherever the tile boundaries fell, so the
+# frame is the same width on every box.
+MARGIN = 0.18
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(
@@ -47,7 +53,7 @@ def main() -> None:
         print(str(error), file=sys.stderr)
         raise SystemExit(1) from None
 
-    basemap, extent = build_basemap(box)
+    basemap, extent = build_basemap(box, margin=MARGIN)
     marked = _mark_the_box(basemap, extent, box)
 
     arguments.output.parent.mkdir(parents=True, exist_ok=True)
@@ -66,9 +72,9 @@ def _mark_the_box(basemap: np.ndarray, extent: tuple[float, float, float, float]
     """
     Dim everything outside the box and outline it.
 
-    The tiles reach past the box, which is the trap this whole tool exists to avoid: an island in
-    the margin looks covered and is not. Dimming says which is which without anyone measuring
-    pixels.
+    The basemap was asked for with a margin around the box, which is the trap this whole tool
+    exists to avoid: an island in that margin looks covered and is not. Dimming says which is
+    which without anyone measuring pixels.
     """
     height, width = basemap.shape[:2]
     left, right, bottom, top = extent

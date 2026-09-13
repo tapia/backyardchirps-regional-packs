@@ -31,16 +31,27 @@ GPKG_LAYER = "range"
 SOURCE_CRS = "EPSG:4326"
 MAP_CRS = "EPSG:3857"
 
-# Label-free tiles, so the map reads as a range map rather than as a road atlas, darkened by the
-# luminance of a relief layer so mountain ranges show. Both come from the same bounds and zoom,
-# which is what makes them share a pixel grid.
-BASEMAP_SOURCE = contextily.providers.CartoDB.PositronNoLabels
+# A quiet grey basemap darkened by the luminance of a relief layer, so mountain ranges show.
+# Both come from the same bounds and zoom, which is what makes them share a pixel grid.
+#
+# This was CartoDB Positron until August 2026, when it started answering anonymous callers with
+# "API KEY REQUIRED" written across every tile. Esri's light grey canvas needs no key and fills
+# the same role. It is not quite label-free the way Positron was: it carries faint country and
+# sea names, which at the size a map is drawn now read as texture under the seasonal colours
+# rather than as a road atlas.
+BASEMAP_SOURCE = contextily.providers.Esri.WorldGrayCanvas
 RELIEF_SOURCE = contextily.providers.Esri.WorldShadedRelief
 RELIEF_STRENGTH = 0.75
 
 # The longest side of the finished image. The basemap keeps its own proportions inside it, so a
 # wide box comes out wide instead of being squeezed into a square.
-MAX_SIDE_PIXELS = 2400
+#
+# This one number decides how big a pack is. A map is the same number of pixels whatever the box
+# holds, so the cost per species hardly moves when the box does: at 2400 a map came to about
+# 440 KB and the maps were three quarters of a pack. At 750 the same map was 58 KB, which took
+# the Iberian pack from 258 MB to about 134 MB and left the cropped rasters as the larger half.
+# 1024 sits above that measurement, so a pack is larger than those figures describe.
+MAX_SIDE_PIXELS = 1024
 TILE_PIXELS = 256
 
 # Opacity of the multiply blend. Multiply keeps the terrain visible through the fill.
@@ -53,7 +64,7 @@ SUPERSAMPLE = 3
 # Bumped when anything here changes what a map looks like: the basemap, the colours, the
 # size, the blend. It is part of the cache directory name, so an old cache is ignored
 # rather than quietly mixed with new renders.
-RENDER_VERSION = "v1"
+RENDER_VERSION = "v2"
 
 WEBP_QUALITY = 90
 # The slowest and smallest WebP setting. A pack is built once and downloaded many times.
@@ -137,27 +148,40 @@ def _box_key(box: BoundingBox) -> str:
     return f"{box.west:g}_{box.south:g}_{box.east:g}_{box.north:g}"
 
 
-def build_basemap(box: BoundingBox) -> tuple[np.ndarray, tuple[float, float, float, float]]:
+def build_basemap(box: BoundingBox, margin: float = 0.0) -> tuple[np.ndarray, tuple[float, float, float, float]]:
     """
-    Download the basemap and the shaded relief for the box, blend them and scale the result to
-    the output size. Returns float RGB in [0, 1] and the Web Mercator extent it covers, which is
-    the extent of the tiles fetched rather than the box itself.
+    Download the basemap and the shaded relief for the box, blend them, crop the blend back to
+    the box and scale it to the output size. Returns float RGB in [0, 1] and the Web Mercator
+    extent it covers.
 
     The zoom is worked out once and passed to both layers. Letting each choose its own would
     give two different tile grids for the same ground, and the blend would be nonsense.
+
+    Tiles come back whole, so what a fetch covers always reaches past the box by up to a tile on
+    each side. How much that is depends on where the tile boundaries happen to fall, and it grows
+    as the zoom drops: at 750 pixels the Canary box came back with twice its own area around it,
+    the islands adrift in ocean nobody asked for. So the blend is cropped to the box before it is
+    scaled, which is also what makes a finished map carry the box's own proportions rather than
+    the tile grid's.
+
+    `margin` widens the box first, as a fraction of its span, for a caller that wants ground
+    outside it on purpose. `box-image` is that caller: showing an island sitting just beyond the
+    box is the one thing it exists for.
     """
-    zoom = _zoom_for(box)
+    framed = _with_margin(box, margin)
+    zoom = _zoom_for(framed)
     basemap, extent = contextily.bounds2img(
-        box.west, box.south, box.east, box.north, zoom=zoom, source=BASEMAP_SOURCE, ll=True
+        framed.west, framed.south, framed.east, framed.north, zoom=zoom, source=BASEMAP_SOURCE, ll=True
     )
     relief, _ = contextily.bounds2img(
-        box.west, box.south, box.east, box.north, zoom=zoom, source=RELIEF_SOURCE, ll=True
+        framed.west, framed.south, framed.east, framed.north, zoom=zoom, source=RELIEF_SOURCE, ll=True
     )
 
     base_rgb = basemap[..., :3].astype(np.float64) / 255.0
     relief_luminance = relief[..., :3].astype(np.float64).mean(axis=2, keepdims=True) / 255.0
     shadow = 1.0 - RELIEF_STRENGTH * (1.0 - relief_luminance)
     blended = np.clip(base_rgb * shadow, 0.0, 1.0)
+    blended, extent = crop_to_box(blended, extent, framed)
 
     tile_height, tile_width = blended.shape[:2]
     scale = MAX_SIDE_PIXELS / max(tile_height, tile_width)
@@ -165,6 +189,57 @@ def build_basemap(box: BoundingBox) -> tuple[np.ndarray, tuple[float, float, flo
         (round(tile_width * scale), round(tile_height * scale)), Image.Resampling.BILINEAR
     )
     return np.asarray(scaled, dtype=np.float64) / 255.0, extent
+
+
+def crop_to_box(
+    image: np.ndarray,
+    extent: tuple[float, float, float, float],
+    box: BoundingBox,
+) -> tuple[np.ndarray, tuple[float, float, float, float]]:
+    """
+    The part of a tile image that covers the box, and the Mercator extent of what is left.
+
+    The edges are snapped outwards to whole pixels, so a crop never cuts into the box: what comes
+    back covers all of it and at most a pixel more on each side. Cutting in would be the worse
+    failure by far, since a species living along the edge would lose the ground it lives on.
+    """
+    left, right, bottom, top = extent
+    height, width = image.shape[:2]
+    transformer = mercator_transformer()
+    box_left, box_bottom = transformer.transform(box.west, box.south)
+    box_right, box_top = transformer.transform(box.east, box.north)
+
+    columns_per_metre = width / (right - left)
+    rows_per_metre = height / (top - bottom)
+    first_column = max(0, math.floor((box_left - left) * columns_per_metre))
+    last_column = min(width, math.ceil((box_right - left) * columns_per_metre))
+    # Rows run the other way: the top of the image is the highest northing.
+    first_row = max(0, math.floor((top - box_top) * rows_per_metre))
+    last_row = min(height, math.ceil((top - box_bottom) * rows_per_metre))
+
+    cropped = image[first_row:last_row, first_column:last_column]
+    return cropped, (
+        left + first_column / columns_per_metre,
+        left + last_column / columns_per_metre,
+        top - last_row / rows_per_metre,
+        top - first_row / rows_per_metre,
+    )
+
+
+def _with_margin(box: BoundingBox, fraction: float) -> BoundingBox:
+    """
+    The box widened by a fraction of its own span, kept inside the ground Mercator can draw.
+    """
+    if fraction <= 0.0:
+        return box
+    horizontal = (box.east - box.west) * fraction
+    vertical = (box.north - box.south) * fraction
+    return BoundingBox(
+        max(-180.0, box.west - horizontal),
+        max(-85.0, box.south - vertical),
+        min(180.0, box.east + horizontal),
+        min(85.0, box.north + vertical),
+    )
 
 
 def priority_layers(ranges: geopandas.GeoDataFrame) -> dict[str, shapely.Geometry]:

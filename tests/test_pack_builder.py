@@ -23,6 +23,8 @@ from rasterio.transform import Affine
 from regional_packs import cli
 from regional_packs.box import BoundingBox
 from regional_packs.index import update_index
+from regional_packs.range_maps import _with_margin
+from regional_packs.range_maps import crop_to_box
 from regional_packs.rasters import crop_raster
 
 # The projection eBird publishes Status & Trends rasters in, and the pixel size of the 9km
@@ -285,6 +287,99 @@ class TestPackIndex:
 
         packs = json.loads(index_path.read_text())["packs"]
         assert [pack["id"] for pack in packs] == ["canary-islands", "iberian-peninsula"]
+
+
+class TestBasemapCrop:
+    """
+    Tiles arrive whole, so a fetch always covers more ground than the box. These check what is
+    cut away and, far more importantly, what is not: a crop that ate into the box would take the
+    coastal strip a species lives on and nothing would say so.
+    """
+
+    def test_keeps_every_pixel_the_box_touches(self) -> None:
+        cropped, extent = crop_to_box(_tiles(), _TILE_EXTENT, BoundingBox(*IBERIA))
+
+        left, right, bottom, top = extent
+        box_left, box_bottom = _to_mercator(IBERIA[0], IBERIA[1])
+        box_right, box_top = _to_mercator(IBERIA[2], IBERIA[3])
+        assert left <= box_left
+        assert right >= box_right
+        assert bottom <= box_bottom
+        assert top >= box_top
+        assert cropped.size > 0
+
+    def test_throws_away_the_ground_the_box_does_not_reach(self) -> None:
+        image = _tiles()
+        cropped, _ = crop_to_box(image, _TILE_EXTENT, BoundingBox(*IBERIA))
+
+        assert cropped.shape[0] < image.shape[0]
+        assert cropped.shape[1] < image.shape[1]
+
+    def test_overshoots_by_less_than_a_pixel_on_each_side(self) -> None:
+        # Snapping outwards is what keeps the box whole; this is the price, and it is bounded.
+        image = _tiles()
+        _, extent = crop_to_box(image, _TILE_EXTENT, BoundingBox(*IBERIA))
+
+        tile_left, tile_right, tile_bottom, tile_top = _TILE_EXTENT
+        metres_per_column = (tile_right - tile_left) / image.shape[1]
+        metres_per_row = (tile_top - tile_bottom) / image.shape[0]
+        left, right, bottom, top = extent
+        box_left, box_bottom = _to_mercator(IBERIA[0], IBERIA[1])
+        box_right, box_top = _to_mercator(IBERIA[2], IBERIA[3])
+        assert box_left - left < metres_per_column
+        assert right - box_right < metres_per_column
+        assert box_bottom - bottom < metres_per_row
+        assert top - box_top < metres_per_row
+
+    def test_leaves_an_image_that_already_fits_alone(self) -> None:
+        box = BoundingBox(*IBERIA)
+        box_left, box_bottom = _to_mercator(box.west, box.south)
+        box_right, box_top = _to_mercator(box.east, box.north)
+        exact = (box_left, box_right, box_bottom, box_top)
+        image = _tiles()
+
+        cropped, extent = crop_to_box(image, exact, box)
+
+        assert cropped.shape == image.shape
+        assert extent == pytest.approx(exact)
+
+    def test_a_margin_widens_the_box_on_every_side(self) -> None:
+        box = BoundingBox(*IBERIA)
+        widened = _with_margin(box, 0.1)
+
+        assert widened.west < box.west
+        assert widened.east > box.east
+        assert widened.south < box.south
+        assert widened.north > box.north
+
+    def test_no_margin_is_the_box_itself(self) -> None:
+        box = BoundingBox(*IBERIA)
+        assert _with_margin(box, 0.0) == box
+
+    def test_a_margin_stays_on_ground_mercator_can_draw(self) -> None:
+        # Mercator cannot reach the poles, so a box near one has to stop short rather than
+        # produce a latitude no projection will take.
+        widened = _with_margin(BoundingBox(-10.0, 60.0, 10.0, 84.0), 0.5)
+        assert widened.north <= 85.0
+
+
+def _tiles(height: int = 96, width: int = 128) -> np.ndarray:
+    """A stand-in for fetched tiles: the shape is what the crop works on, not the colours."""
+    return np.linspace(0.0, 1.0, height * width * 3).reshape(height, width, 3)
+
+
+def _to_mercator(longitude: float, latitude: float) -> tuple[float, float]:
+    return Transformer.from_crs("EPSG:4326", "EPSG:3857", always_xy=True).transform(longitude, latitude)
+
+
+def _extent_around(box: tuple[float, float, float, float], degrees: float) -> tuple[float, float, float, float]:
+    """A Mercator extent reaching past the box on every side, which is what a tile fetch returns."""
+    left, bottom = _to_mercator(box[0] - degrees, box[1] - degrees)
+    right, top = _to_mercator(box[2] + degrees, box[3] + degrees)
+    return left, right, bottom, top
+
+
+_TILE_EXTENT = _extent_around(IBERIA, 2.0)
 
 
 def _stage_pack(tmp_path: Path, whole_rasters: Path, box: BoundingBox) -> Path:
