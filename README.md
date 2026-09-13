@@ -31,13 +31,12 @@ update it in the same commit.
 
 ## Why this is not in the station repository
 
-Two reasons, and the first is the one that matters:
+Two reasons:
 
-- **Dependencies.** Drawing a range map needs contextily, geopandas and shapely. A station would
-  install that stack on a Raspberry Pi and never open it. Nothing in a pack is built on a Pi.
-- **Lifecycles.** The station is tagged in semver. A pack is dated, and gets rebuilt when eBird
-  publishes a new data year. Hanging a large pack off a station release makes it look like part
-  of the station and forces a station tag whenever a pack changes.
+- **Avoid unnecessary dependencies.** Drawing a range map needs contextily, geopandas and
+  shapely. A station doesn't need those dependencies.
+- **Lifecycles.** Backyard Chirps and the regional packs have different versions. A new version
+  of the region pack can be released with no need to update the station, and vice-versa.
 
 This repository depends on `backyardchirps`, pinned to a release, and imports it. That direction
 is deliberate: the call deciding which species are plausible somewhere,
