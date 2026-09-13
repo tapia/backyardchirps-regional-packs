@@ -12,11 +12,11 @@
         "east": 2.1,
         "north": 61.1
       },
-      "version": "2026-09-13.1",
-      "species_count": 476,
-      "url": "https://github.com/tapia/backyardchirps-regional-packs/releases/download/british-isles-2026-09-13.1/british-isles-2026-09-13.1.tar.zst",
-      "sha256": "34b8bd3a86158b721b6570d13c46a126cc3ecd150c2a653c43159ebf23c880c1",
-      "size_bytes": 80465568
+      "version": "2026-09-13.2",
+      "species_count": 475,
+      "url": "https://github.com/tapia/backyardchirps-regional-packs/releases/download/british-isles-2026-09-13.2/british-isles-2026-09-13.2.tar.zst",
+      "sha256": "b4fae979d386a68a0033a0a9584a4d119822f30887739834cafee3af2af3bc6f",
+      "size_bytes": 81336124
     },
     {
       "id": "canary-islands",
@@ -30,11 +30,11 @@
         "east": -13.1,
         "north": 29.8
       },
-      "version": "2026-09-13.1",
-      "species_count": 317,
-      "url": "https://github.com/tapia/backyardchirps-regional-packs/releases/download/canary-islands-2026-09-13.1/canary-islands-2026-09-13.1.tar.zst",
-      "sha256": "46e1759d0aa744a2a3be9c73bf6a7d3fd1845d5788108790adfdf4c92356260f",
-      "size_bytes": 3142885
+      "version": "2026-09-13.2",
+      "species_count": 316,
+      "url": "https://github.com/tapia/backyardchirps-regional-packs/releases/download/canary-islands-2026-09-13.2/canary-islands-2026-09-13.2.tar.zst",
+      "sha256": "490692d229a61a061e4bedfd2eb84e9364129c572da409709c9ac98fd1b5f78e",
+      "size_bytes": 3154629
     },
     {
       "id": "france",
@@ -48,11 +48,11 @@
         "east": 8.3,
         "north": 51.2
       },
-      "version": "2026-09-13.1",
-      "species_count": 522,
-      "url": "https://github.com/tapia/backyardchirps-regional-packs/releases/download/france-2026-09-13.1/france-2026-09-13.1.tar.zst",
-      "sha256": "dcedc2b58a83b6f984a56cf8673719e87d713213ed0b92be0f26781c7ba9553f",
-      "size_bytes": 170708545
+      "version": "2026-09-13.2",
+      "species_count": 521,
+      "url": "https://github.com/tapia/backyardchirps-regional-packs/releases/download/france-2026-09-13.2/france-2026-09-13.2.tar.zst",
+      "sha256": "59e4332763d03d9d2650358073846c06300abcfc134be50b58f18c916f904dae",
+      "size_bytes": 171544734
     },
     {
       "id": "iberian-peninsula",
@@ -66,11 +66,11 @@
         "east": 5.4,
         "north": 44.9
       },
-      "version": "2026-09-13.1",
-      "species_count": 525,
-      "url": "https://github.com/tapia/backyardchirps-regional-packs/releases/download/iberian-peninsula-2026-09-13.1/iberian-peninsula-2026-09-13.1.tar.zst",
-      "sha256": "888dc80552277b7676a3084a0fc25da56b829d9dafda32568b0a96db540bc60d",
-      "size_bytes": 176449014
+      "version": "2026-09-13.2",
+      "species_count": 524,
+      "url": "https://github.com/tapia/backyardchirps-regional-packs/releases/download/iberian-peninsula-2026-09-13.2/iberian-peninsula-2026-09-13.2.tar.zst",
+      "sha256": "fcf7ce92819858ccc4dfd52ea1ee67622ffcd095037ed867dcd855c09adcb30c",
+      "size_bytes": 177421170
     }
   ],
   "updated": "2026-09-13"

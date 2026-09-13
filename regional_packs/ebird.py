@@ -4,7 +4,6 @@ ask it for.
 """
 
 from pathlib import Path
-from typing import Any
 
 import requests
 from backyardchirps.features.species.entity import Species
@@ -96,20 +95,20 @@ class EbirdDownloader:
             self._releases[species_code] = release
         return self._releases[species_code]
 
-    def _list_objects(self, species_code: str, version: int) -> Any:
+    def _list_objects(self, species_code: str, version: int) -> list[str]:
+        """
+        What eBird publishes for exactly this species.
+        """
         response = self.session.get(f"{self.BASE}/list-obj/{version}/{species_code}?key={self.access_key}")
         response.raise_for_status()
-        return response.json()
+        objects: list[str] = response.json()
+        # Make sure we're not returning species with the same prefix ('redcro' and 'redcro9')
+        return [obj for obj in objects if obj.split("/")[1] == species_code]
 
 
 def species_over(points: list[tuple[float, float]]) -> list[Species]:
     """
     Every species plausible at any of these points that eBird has a code for, sorted.
-
-    Both halves are derived rather than stored: the species come from GeoModel through the same
-    call a station uses to build its own list, so the two can never disagree about what counts as
-    plausible; the codes come from the taxonomy. A species the taxonomy has no code for is
-    skipped, since there is no data to ask eBird for.
     """
     scientific_names = plausible_species_names_over(points)
 

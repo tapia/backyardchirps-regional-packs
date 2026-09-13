@@ -21,10 +21,10 @@ against. Redrawn with every pack build; see [Building a pack](#building-a-pack).
 
 | Pack | id | box (W S E N) | species | size |
 |---|---|---|---:|---:|
-| British Isles | `british-isles` | `-11.0 49.8 2.1 61.1` | 476 | 80 MB |
-| Canary Islands | `canary-islands` | `-18.6 27.4 -13.1 29.8` | 317 | 3.1 MB |
-| France | `france` | `-5.2 42.3 8.3 51.2` | 522 | 171 MB |
-| Iberian Peninsula | `iberian-peninsula` | `-10.8 34.2 5.4 44.9` | 525 | 176 MB |
+| British Isles | `british-isles` | `-11.0 49.8 2.1 61.1` | 475 | 81 MB |
+| Canary Islands | `canary-islands` | `-18.6 27.4 -13.1 29.8` | 316 | 3.2 MB |
+| France | `france` | `-5.2 42.3 8.3 51.2` | 521 | 172 MB |
+| Iberian Peninsula | `iberian-peninsula` | `-10.8 34.2 5.4 44.9` | 524 | 177 MB |
 
 The map redraws itself and this table does not: it is copied from `index.json` by hand, so
 update it in the same commit.

@@ -63,6 +63,9 @@ class _Answer:
 class _Ebird:
     """
     Publishes the given objects under list-obj/<version>/<code>, and nothing anywhere else.
+
+    Listing matches codes by prefix, the way the real endpoint does: asking for redcro answers
+    with redcro9's files as well.
     """
 
     def __init__(self, published: dict[tuple[int, str], list[str]]) -> None:
@@ -74,7 +77,14 @@ class _Ebird:
         if "/list-obj/" in url:
             version, code = url.split("/list-obj/")[1].split("?")[0].split("/")
             self.listed.append((int(version), code))
-            return _Answer(self.published.get((int(version), code), []))
+            return _Answer(
+                [
+                    obj
+                    for (published_version, published_code), objects in self.published.items()
+                    if published_version == int(version) and published_code.startswith(code)
+                    for obj in objects
+                ]
+            )
         obj = url.split("objKey=")[1].split("&")[0]
         self.fetched.append(obj)
         return _Answer(content=obj.encode())
@@ -154,3 +164,44 @@ def test_skips_a_fallback_file_already_on_disk(tmp_path: Path) -> None:
     _download(_downloader(ebird), "comshe", tmp_path)
 
     assert ebird.fetched == []
+
+
+def test_leaves_out_a_species_whose_code_starts_with_this_ones(tmp_path: Path) -> None:
+    # redcro9 is Cassia Crossbill. Its files sort ahead of redcro's, so taking them would ship an
+    # Idaho endemic's data as Red Crossbill's.
+    ebird = _Ebird({(2023, "redcro"): _products(2023, "redcro"), (2023, "redcro9"): _products(2023, "redcro9")})
+
+    files = _download(_downloader(ebird), "redcro", tmp_path)
+
+    assert files == [
+        "band-dates.csv",
+        "redcro_occurrence_median_9km_2023.tif",
+        "redcro_range_smooth_9km_2023.gpkg",
+    ]
+    assert all(obj.startswith("2023/redcro/") for obj in ebird.fetched)
+
+
+def test_another_species_files_do_not_stand_in_for_the_fallback(tmp_path: Path) -> None:
+    # The current release has nothing for purswa itself, only for purswa3. That is nothing, so
+    # 2021 is asked, rather than the listing counting as an answer.
+    ebird = _Ebird({(2023, "purswa3"): _products(2023, "purswa3"), (2021, "purswa"): _products(2021, "purswa")})
+
+    files = _download(_downloader(ebird), "purswa", tmp_path)
+
+    assert files == [
+        "band-dates.csv",
+        "purswa_occurrence_median_9km_2021.tif",
+        "purswa_range_smooth_9km_2021.gpkg",
+    ]
+
+
+def _products(version: int, code: str) -> list[str]:
+    """
+    The files a pack takes from one species' listing, in either release's naming.
+    """
+    resolution = "9km" if version == 2023 else "mr"
+    return [
+        f"{version}/{code}/weekly/{code}_occurrence_median_{resolution}_{version}.tif",
+        f"{version}/{code}/weekly/band-dates.csv",
+        f"{version}/{code}/ranges/{code}_range_smooth_{resolution}_{version}.gpkg",
+    ]
