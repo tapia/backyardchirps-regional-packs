@@ -34,6 +34,13 @@ PIXEL_METRES = 9000.0
 
 IBERIA = (-10.0, 35.0, 4.5, 44.5)
 
+# The projection of eBird's 2021 rasters, which a species left out of later releases is taken
+# from, and their pixel size. At the latitude of the British Isles its meridians lean in hard,
+# which is what makes a crop in it worth checking.
+SINUSOIDAL = "+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +R=6371007.181 +units=m +no_defs"
+SINUSOIDAL_PIXEL_METRES = 8888.42
+BRITISH_ISLES = (-11.0, 49.8, 2.1, 61.1)
+
 # Any species the taxonomy knows will do. Its eBird code names the directory and starts the
 # raster file, which is how the downloader leaves things and how SeasonalityPredictor finds them.
 SPECIES = Species("Hirundo rustica")
@@ -87,6 +94,37 @@ def whole_rasters(world_raster: Path, tmp_path_factory: pytest.TempPathFactory) 
     shutil.copy2(world_raster, species_dir / f"{SPECIES_CODE}_occurrence_median_9km_2023.tif")
     dates = "band,date\n" + "".join(f"{band},2023-0{band}-04\n" for band in range(1, 5))
     (species_dir / "band-dates.csv").write_text(dates)
+    return root
+
+
+@pytest.fixture(scope="module")
+def sinusoidal_rasters(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """
+    A 2021 species laid out the way the downloader leaves one: a whole-world sinusoidal raster
+    at 8.9km, saved under the 9km name, with 2021 band dates beside it.
+    """
+    width, height = 4504, 1877
+    transform = Affine(SINUSOIDAL_PIXEL_METRES, 0.0, -20015109.0, 0.0, -SINUSOIDAL_PIXEL_METRES, 10007555.0)
+    band = np.tile(np.arange(width, dtype=np.float32), (height, 1))
+    root = tmp_path_factory.mktemp("sinusoidal")
+    species_dir = root / SPECIES_CODE
+    species_dir.mkdir()
+    with rasterio.open(
+        species_dir / f"{SPECIES_CODE}_occurrence_median_9km_2021.tif",
+        "w",
+        driver="GTiff",
+        width=width,
+        height=height,
+        count=2,
+        dtype="float32",
+        nodata=np.nan,
+        crs=SINUSOIDAL,
+        transform=transform,
+        compress="deflate",
+    ) as raster:
+        for band_index in range(1, 3):
+            raster.write(band * band_index, band_index)
+    (species_dir / "band-dates.csv").write_text("band,date\n1,2021-01-04\n2,2021-01-11\n")
     return root
 
 
@@ -239,6 +277,22 @@ class TestStagedPack:
                 SPECIES_CODE, latitude, longitude
             )
         assert part.get_band_dates(SPECIES_CODE) == whole.get_band_dates(SPECIES_CODE)
+
+    def test_a_2021_raster_answers_as_the_whole_one_would(self, sinusoidal_rasters: Path, tmp_path: Path) -> None:
+        # Nothing assumes Equal Earth: the crop and the station both take the projection from
+        # the file. Every corner, since in this projection the box's edges are nowhere near
+        # parallel to the pixel grid and a corner is what a wrong window would lose.
+        box = BoundingBox(*BRITISH_ISLES)
+        staged = _stage_pack(tmp_path, sinusoidal_rasters, box)
+
+        whole = SeasonalityPredictor(root=sinusoidal_rasters)
+        part = SeasonalityPredictor(root=staged / "ebird_occurrence")
+        for longitude, latitude in itertools.product((box.west, box.east), (box.south, box.north)):
+            assert part.get_seasonality_timeline(SPECIES_CODE, latitude, longitude) == whole.get_seasonality_timeline(
+                SPECIES_CODE, latitude, longitude
+            )
+        with rasterio.open(next((staged / "ebird_occurrence" / SPECIES_CODE).glob("*.tif"))) as raster:
+            assert raster.crs == rasterio.crs.CRS.from_string(SINUSOIDAL)
 
     def test_carries_the_band_dates_beside_every_raster(self, whole_rasters: Path, tmp_path: Path) -> None:
         # Without them the timeline has values it cannot place in the year.

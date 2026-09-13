@@ -12,9 +12,8 @@ from backyardchirps.features.species.maintenance import plausible_species_names_
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-# The two products a pack is made of. The occurrence raster is what a station samples for its
-# seasonality timeline, and seasonality.py finds it by globbing for this same token. The range
-# GeoPackage holds the seasonal polygons the range maps are drawn from.
+# The two products a pack is made of. The occurrence contains the seasonality timeline,
+# and the range contains the seasonal polygons used to render the range maps.
 OCCURRENCE_PRODUCT = "occurrence_median_9km"
 RANGE_PRODUCT = "range_smooth_9km"
 
@@ -22,10 +21,18 @@ RANGE_PRODUCT = "range_smooth_9km"
 # place a value in the year without it.
 BAND_DATES_FILE = "band-dates.csv"
 
-# eBird answers the odd request with a 500 that succeeds when asked again. A pack asks it about
-# every species, hundreds of times, so one of those would otherwise end the build partway through
-# the download. Waits 2, 4, 8, 16 and 32 seconds before giving up.
+# A pack requests eBird for every species, hundreds of times, so it requires retries.
+# Wait 2, 4, 8, 16 and 32 seconds before giving up.
 RETRY = Retry(total=5, backoff_factor=2, status_forcelist=(500, 502, 503, 504))
+
+# eBird doesn't publish info about all species in every release, so we need a fallback to 
+# query previous releases. For now we only query 2023 and 2021 releases.
+#
+# The products are the same ones in the same format, with one main difference: the 9km resolution
+# was called "mr" then, which is the only thing the downloader has to know.
+FALLBACK_VERSION = 2021
+RESOLUTION = "9km"
+FALLBACK_RESOLUTION = "mr"
 
 
 class EbirdDownloader:
@@ -40,15 +47,22 @@ class EbirdDownloader:
         self.version = version
         self.session = requests.Session()
         self.session.mount("https://", HTTPAdapter(max_retries=RETRY))
+        # Each species is asked about once per product, so its listing is kept for the second.
+        self._releases: dict[str, tuple[int, list[str]]] = {}
 
     def download_species(self, species_code: str, output_dir: Path, product: str) -> None:
         species_dir = output_dir / species_code
         species_dir.mkdir(parents=True, exist_ok=True)
 
-        wanted = [obj for obj in self._list_objects(species_code) if self._is_wanted(obj, product)]
+        version, objects = self._release_for(species_code)
+        if version == FALLBACK_VERSION:
+            product = product.replace(RESOLUTION, FALLBACK_RESOLUTION)
+        wanted = [obj for obj in objects if self._is_wanted(obj, product)]
 
         for obj in wanted:
-            filename = species_dir / Path(obj).name
+            # A fallback file is saved under today's resolution name, since that name is how the
+            # builder, the range maps and a station all find it. The year in it stays 2021.
+            filename = species_dir / Path(obj).name.replace(f"_{FALLBACK_RESOLUTION}_", f"_{RESOLUTION}_")
             if filename.exists():
                 continue
 
@@ -67,8 +81,23 @@ class EbirdDownloader:
         # Occurrence rasters need their band-dates.csv companion for the timeline.
         return product.startswith("occurrence") and obj.endswith("band-dates.csv")
 
-    def _list_objects(self, species_code: str) -> Any:
-        response = self.session.get(f"{self.BASE}/list-obj/{self.version}/{species_code}?key={self.access_key}")
+    def _release_for(self, species_code: str) -> tuple[int, list[str]]:
+        """
+        The release to take a species from, and what it publishes for it: the current one when
+        it has anything, 2021 otherwise. A species in neither comes back with nothing to fetch.
+        """
+        if species_code not in self._releases:
+            release = (self.version, self._list_objects(species_code, self.version))
+            if not release[1] and self.version != FALLBACK_VERSION:
+                fallback = (FALLBACK_VERSION, self._list_objects(species_code, FALLBACK_VERSION))
+                if fallback[1]:
+                    print(f"Nothing for {species_code} in {self.version}, taking it from {FALLBACK_VERSION}")
+                    release = fallback
+            self._releases[species_code] = release
+        return self._releases[species_code]
+
+    def _list_objects(self, species_code: str, version: int) -> Any:
+        response = self.session.get(f"{self.BASE}/list-obj/{version}/{species_code}?key={self.access_key}")
         response.raise_for_status()
         return response.json()
 

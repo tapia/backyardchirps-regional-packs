@@ -162,6 +162,14 @@ takes each file down by two orders of magnitude. Values inside the box are copie
 along with the projection, the pixel grid, the data type and the compression, so a station reads
 a cropped raster exactly as it reads a whole one.
 
+**Some species come from eBird's 2021 release.** eBird has left a few hundred species out of
+every release since 2021, most of them European, Common Shelduck and Corncrake among them. A
+species the current release has nothing for is taken from 2021 instead, which in the British
+Isles is 99 species that would otherwise be missing. The products and their format are the same;
+the files are saved under the current names with `2021` left in them, and the raster is in a
+sinusoidal projection rather than Equal Earth, which a station reads from the file like any other.
+A species in neither release is left out of the pack, as before.
+
 ## The index
 
 `--index` merges the pack into a JSON file listing every pack with its box, which is what
