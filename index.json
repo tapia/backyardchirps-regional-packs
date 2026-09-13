@@ -19,6 +19,24 @@
       "size_bytes": 2799933
     },
     {
+      "id": "france",
+      "names": {
+        "en": "France",
+        "es": "Francia"
+      },
+      "bbox": {
+        "west": -5.2,
+        "south": 42.3,
+        "east": 8.3,
+        "north": 51.2
+      },
+      "version": "2026-09-13",
+      "species_count": 413,
+      "url": "https://github.com/tapia/backyardchirps-regional-packs/releases/download/france-2026-09-13/france-2026-09-13.tar.zst",
+      "sha256": "2f68c10551cbb194e458bc3c997be892955743fc34fd35aa0657a456986779ff",
+      "size_bytes": 128502346
+    },
+    {
       "id": "iberian-peninsula",
       "names": {
         "en": "Iberian Peninsula",

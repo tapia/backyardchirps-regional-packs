@@ -41,6 +41,12 @@ canary-islands: NAME_ES := Islas Canarias
 canary-islands: BBOX := -18.6 27.4 -13.1 29.8
 canary-islands: pack
 
+france: ID := france
+france: NAME_EN := France
+france: NAME_ES := Francia
+france: BBOX := -5.2 42.3 8.3 51.2
+france: pack
+
 .PHONY: help
 help:
 	@echo "Setup"
@@ -51,6 +57,7 @@ help:
 	@echo "Building a pack (needs EBIRD_API_KEY and XENO_CANTO_API_KEY)"
 	@echo "  make iberian-peninsula       build it, maps and all, and update $(INDEX)"
 	@echo "  make canary-islands"
+	@echo "  make france"
 	@echo "  make box-image ID=... BBOX=... draw the box on a map, to check it covers what you meant"
 	@echo "  make preview ID=... BBOX=...  a quick look at a new box: no maps, no index entry"
 	@echo ""
