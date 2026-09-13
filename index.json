@@ -1,6 +1,24 @@
 {
   "packs": [
     {
+      "id": "british-isles",
+      "names": {
+        "en": "British Isles",
+        "es": "Islas británicas"
+      },
+      "bbox": {
+        "west": -11.0,
+        "south": 49.8,
+        "east": 2.1,
+        "north": 61.1
+      },
+      "version": "2026-09-13",
+      "species_count": 377,
+      "url": "https://github.com/tapia/backyardchirps-regional-packs/releases/download/british-isles-2026-09-13/british-isles-2026-09-13.tar.zst",
+      "sha256": "898783113bac1ac77c12d4b84121da99d00a6c21e0537533e3d086da9fda8feb",
+      "size_bytes": 67438074
+    },
+    {
       "id": "canary-islands",
       "names": {
         "en": "Canary Islands",

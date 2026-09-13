@@ -49,6 +49,12 @@ france: NAME_ES := Francia
 france: BBOX := -5.2 42.3 8.3 51.2
 france: pack
 
+british-isles: ID := british-isles
+british-isles: NAME_EN := British Isles
+british-isles: NAME_ES := Islas británicas
+british-isles: BBOX := -11.0 49.8 2.1 61.1
+british-isles: pack
+
 .PHONY: help
 help:
 	@echo "Setup"
@@ -60,6 +66,7 @@ help:
 	@echo "  make iberian-peninsula       build it, maps and all, and update $(INDEX)"
 	@echo "  make canary-islands"
 	@echo "  make france"
+	@echo "  make british-isles"
 	@echo "  make box-image ID=... BBOX=... draw the box on a map, to check it covers what you meant"
 	@echo "  make preview ID=... BBOX=...  a quick look at a new box: no maps, no index entry"
 	@echo "  make coverage-map            redraw $(COVERAGE_MAP) from $(INDEX) (a pack build does this)"
@@ -150,7 +157,7 @@ publish:
 		--notes "Region pack for $(ID), built $(VERSION)."
 	@echo
 	@echo "Published. Now commit $(INDEX), which is what stations read to find this pack,"
-	@echo "and $(COVERAGE_MAP), which shows it in the README."
+	@echo "and $(COVERAGE_MAP), which shows it in the README, with its row in the README's table."
 
 .PHONY: require-pack-arguments
 require-pack-arguments:

@@ -19,6 +19,16 @@ its own coordinates.
 Every pack in [`index.json`](index.json), which is what a station resolves its coordinates
 against. Redrawn with every pack build; see [Building a pack](#building-a-pack).
 
+| Pack | id | box (W S E N) | species | size |
+|---|---|---|---:|---:|
+| British Isles | `british-isles` | `-11.0 49.8 2.1 61.1` | 377 | 67 MB |
+| Canary Islands | `canary-islands` | `-18.6 27.4 -13.1 29.8` | 265 | 2.8 MB |
+| France | `france` | `-5.2 42.3 8.3 51.2` | 413 | 129 MB |
+| Iberian Peninsula | `iberian-peninsula` | `-10.8 34.2 5.4 44.9` | 414 | 140 MB |
+
+The map redraws itself and this table does not: it is copied from `index.json` by hand, so
+update it in the same commit.
+
 ## Why this is not in the station repository
 
 Two reasons, and the first is the one that matters:
@@ -48,7 +58,7 @@ make models                            # GeoModel, into work/
 export EBIRD_API_KEY=<your-key>
 export XENO_CANTO_API_KEY=<your-key>
 make iberian-peninsula
-make publish ID=iberian-peninsula      # then commit index.json and docs/coverage-map.webp
+make publish ID=iberian-peninsula      # then commit index.json, docs/coverage-map.webp and README.md
 ```
 
 ### The two keys
@@ -93,7 +103,7 @@ the dimmed margin looks covered and is not.
 **The map at the top of this file** is drawn from `index.json` alone, so it shows what stations
 can actually be offered and nothing that is only planned. Building a pack redraws it right after
 the index is updated, and `make coverage-map` redraws it on its own, which takes seconds and no
-key. Commit it with `index.json`.
+key. Commit it with `index.json`, along with the row the pack gets in the table under it.
 
 Then `make preview ID=... BBOX="W S E N"` builds a real pack from the box with no maps and no
 index entry, which is the cheap way to see how many species it pulls in before committing hours

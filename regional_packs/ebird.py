@@ -9,6 +9,8 @@ from typing import Any
 import requests
 from backyardchirps.features.species.entity import Species
 from backyardchirps.features.species.maintenance import plausible_species_names_over
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 # The two products a pack is made of. The occurrence raster is what a station samples for its
 # seasonality timeline, and seasonality.py finds it by globbing for this same token. The range
@@ -19,6 +21,11 @@ RANGE_PRODUCT = "range_smooth_9km"
 # eBird ships the calendar date of each weekly band beside the raster, and a timeline cannot
 # place a value in the year without it.
 BAND_DATES_FILE = "band-dates.csv"
+
+# eBird answers the odd request with a 500 that succeeds when asked again. A pack asks it about
+# every species, hundreds of times, so one of those would otherwise end the build partway through
+# the download. Waits 2, 4, 8, 16 and 32 seconds before giving up.
+RETRY = Retry(total=5, backoff_factor=2, status_forcelist=(500, 502, 503, 504))
 
 
 class EbirdDownloader:
@@ -31,6 +38,8 @@ class EbirdDownloader:
     def __init__(self, access_key: str, version: int = 2023):
         self.access_key = access_key
         self.version = version
+        self.session = requests.Session()
+        self.session.mount("https://", HTTPAdapter(max_retries=RETRY))
 
     def download_species(self, species_code: str, output_dir: Path, product: str) -> None:
         species_dir = output_dir / species_code
@@ -46,7 +55,7 @@ class EbirdDownloader:
             url = f"{self.BASE}/fetch?objKey={obj}&key={self.access_key}"
             print("Downloading", filename.name)
 
-            with requests.get(url, stream=True) as response:
+            with self.session.get(url, stream=True) as response:
                 response.raise_for_status()
                 with open(filename, "wb") as handle:
                     for chunk in response.iter_content(1024 * 1024):
@@ -59,7 +68,7 @@ class EbirdDownloader:
         return product.startswith("occurrence") and obj.endswith("band-dates.csv")
 
     def _list_objects(self, species_code: str) -> Any:
-        response = requests.get(f"{self.BASE}/list-obj/{self.version}/{species_code}?key={self.access_key}")
+        response = self.session.get(f"{self.BASE}/list-obj/{self.version}/{species_code}?key={self.access_key}")
         response.raise_for_status()
         return response.json()
 
