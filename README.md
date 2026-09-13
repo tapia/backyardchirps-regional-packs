@@ -12,6 +12,13 @@ A pack carries **no species list**. A list is only right for the point it was ma
 box-wide one would make the rare-species rule meaningless, so every station derives its own from
 its own coordinates.
 
+## The packs
+
+![Every published region pack, drawn as its bounding box](docs/coverage-map.webp)
+
+Every pack in [`index.json`](index.json), which is what a station resolves its coordinates
+against. Redrawn with every pack build; see [Building a pack](#building-a-pack).
+
 ## Why this is not in the station repository
 
 Two reasons, and the first is the one that matters:
@@ -41,7 +48,7 @@ make models                            # GeoModel, into work/
 export EBIRD_API_KEY=<your-key>
 export XENO_CANTO_API_KEY=<your-key>
 make iberian-peninsula
-make publish ID=iberian-peninsula      # then commit index.json
+make publish ID=iberian-peninsula      # then commit index.json and docs/coverage-map.webp
 ```
 
 ### The two keys
@@ -82,6 +89,11 @@ That draws the box on the same basemap a range map is framed on, dimming everyth
 and takes seconds without an eBird key. It is the only check there is: no test can tell you that
 a box misses an island, because the question is geographic rather than arithmetic. An island in
 the dimmed margin looks covered and is not.
+
+**The map at the top of this file** is drawn from `index.json` alone, so it shows what stations
+can actually be offered and nothing that is only planned. Building a pack redraws it right after
+the index is updated, and `make coverage-map` redraws it on its own, which takes seconds and no
+key. Commit it with `index.json`.
 
 Then `make preview ID=... BBOX="W S E N"` builds a real pack from the box with no maps and no
 index entry, which is the cheap way to see how many species it pulls in before committing hours

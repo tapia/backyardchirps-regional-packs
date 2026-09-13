@@ -148,7 +148,9 @@ def _box_key(box: BoundingBox) -> str:
     return f"{box.west:g}_{box.south:g}_{box.east:g}_{box.north:g}"
 
 
-def build_basemap(box: BoundingBox, margin: float = 0.0) -> tuple[np.ndarray, tuple[float, float, float, float]]:
+def build_basemap(
+    box: BoundingBox, margin: float = 0.0, max_side: int = MAX_SIDE_PIXELS
+) -> tuple[np.ndarray, tuple[float, float, float, float]]:
     """
     Download the basemap and the shaded relief for the box, blend them, crop the blend back to
     the box and scale it to the output size. Returns float RGB in [0, 1] and the Web Mercator
@@ -167,9 +169,12 @@ def build_basemap(box: BoundingBox, margin: float = 0.0) -> tuple[np.ndarray, tu
     `margin` widens the box first, as a fraction of its span, for a caller that wants ground
     outside it on purpose. `box-image` is that caller: showing an island sitting just beyond the
     box is the one thing it exists for.
+
+    `max_side` is for an image that is not a range map. Leave it alone for anything that goes
+    into a pack, where it decides the size of the pack.
     """
     framed = _with_margin(box, margin)
-    zoom = _zoom_for(framed)
+    zoom = _zoom_for(framed, max_side)
     basemap, extent = contextily.bounds2img(
         framed.west, framed.south, framed.east, framed.north, zoom=zoom, source=BASEMAP_SOURCE, ll=True
     )
@@ -184,7 +189,7 @@ def build_basemap(box: BoundingBox, margin: float = 0.0) -> tuple[np.ndarray, tu
     blended, extent = crop_to_box(blended, extent, framed)
 
     tile_height, tile_width = blended.shape[:2]
-    scale = MAX_SIDE_PIXELS / max(tile_height, tile_width)
+    scale = max_side / max(tile_height, tile_width)
     scaled = Image.fromarray((blended * 255.0).astype(np.uint8)).resize(
         (round(tile_width * scale), round(tile_height * scale)), Image.Resampling.BILINEAR
     )
@@ -276,12 +281,12 @@ def priority_layers(ranges: geopandas.GeoDataFrame) -> dict[str, shapely.Geometr
     return layers
 
 
-def _zoom_for(box: BoundingBox) -> int:
+def _zoom_for(box: BoundingBox, max_side: int) -> int:
     """
     A zoom level whose tiles roughly match the output resolution, so the map is neither a blur
     nor thousands of tiles. One tile spans 360 / 2**zoom degrees of longitude.
     """
-    tiles_across = MAX_SIDE_PIXELS / TILE_PIXELS
+    tiles_across = max_side / TILE_PIXELS
     span = max(box.east - box.west, box.north - box.south)
     return max(1, min(12, math.ceil(math.log2(360.0 * tiles_across / span))))
 

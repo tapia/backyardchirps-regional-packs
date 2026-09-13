@@ -20,12 +20,15 @@ dependencies = [
     "geopandas>=1.0.1",
     "shapely>=2.0.6",
     "pillow>=11.0.0",
+    # The coverage map in the README, which is boxes and labels over a basemap.
+    "matplotlib>=3.10.0",
 ]
 
 [project.scripts]
 build-pack = "regional_packs.cli:main"
 download-models = "regional_packs.models:main"
 box-image = "regional_packs.box_image:main"
+coverage-map = "regional_packs.coverage_map:main"
 
 [tool.uv.sources]
 # Pinned to a release rather than to a branch, so a pack is always built against a station that

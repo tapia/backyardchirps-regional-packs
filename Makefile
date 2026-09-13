@@ -12,6 +12,8 @@ SHELL := bash
 REPO := tapia/backyardchirps-regional-packs
 INDEX := index.json
 DIST := dist
+# The map in the README, drawn from $(INDEX). Committed alongside it.
+COVERAGE_MAP := docs/coverage-map.webp
 
 # Today, UTC, which is what build-pack would have chosen on its own. Override to rebuild an
 # existing pack under its own version: make iberian-peninsula VERSION=2026-08-16
@@ -60,6 +62,7 @@ help:
 	@echo "  make france"
 	@echo "  make box-image ID=... BBOX=... draw the box on a map, to check it covers what you meant"
 	@echo "  make preview ID=... BBOX=...  a quick look at a new box: no maps, no index entry"
+	@echo "  make coverage-map            redraw $(COVERAGE_MAP) from $(INDEX) (a pack build does this)"
 	@echo ""
 	@echo "Publishing"
 	@echo "  make publish ID=...          create the release and upload the pack"
@@ -98,8 +101,12 @@ pack: require-pack-arguments
 		--index "$(INDEX)" \
 		--base-url "$(BASE_URL)" \
 		$(DOWNLOAD_FLAG)
+	@# The pack is built and indexed by now, so a map that fails to draw (the tiles are a
+	@# download) is reported rather than allowed to fail hours of work.
+	uv run coverage-map --index "$(INDEX)" --output "$(COVERAGE_MAP)" || \
+		echo "Could not redraw $(COVERAGE_MAP). Run 'make coverage-map' before committing."
 	@echo
-	@echo "Built $(TARBALL) and updated $(INDEX)."
+	@echo "Built $(TARBALL) and updated $(INDEX) and $(COVERAGE_MAP)."
 	@echo "Next: make publish ID=$(ID) VERSION=$(VERSION)"
 
 # A box you are still deciding on. No maps and no reference calls, so it finishes in minutes
@@ -124,6 +131,11 @@ preview: require-pack-arguments
 box-image: require-pack-arguments
 	uv run box-image --bbox $(BBOX) --output "$(DIST)/boxes/$(ID).png"
 
+# Every pack in the index on one map, for the README. Seconds, no eBird key.
+.PHONY: coverage-map
+coverage-map:
+	uv run coverage-map --index "$(INDEX)" --output "$(COVERAGE_MAP)"
+
 .PHONY: publish
 publish:
 	@test -n "$(ID)" || { echo "publish needs ID, for example: make publish ID=iberian-peninsula"; exit 1; }
@@ -137,7 +149,8 @@ publish:
 		--title "$(ID) $(VERSION)" \
 		--notes "Region pack for $(ID), built $(VERSION)."
 	@echo
-	@echo "Published. Now commit $(INDEX): it is what stations read to find this pack."
+	@echo "Published. Now commit $(INDEX), which is what stations read to find this pack,"
+	@echo "and $(COVERAGE_MAP), which shows it in the README."
 
 .PHONY: require-pack-arguments
 require-pack-arguments:
